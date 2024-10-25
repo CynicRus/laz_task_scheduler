@@ -170,7 +170,7 @@ begin
   {$ifdef WINDOWS}
 result := 0;
   {$ELSE}
-  Result := 0;
+  Result := nil;
   {$ENDIF}
 end;
 
