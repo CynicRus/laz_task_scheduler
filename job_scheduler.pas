@@ -41,7 +41,7 @@ uses
   {$IFDEF WINDOWS}
   , Windows
   {$ELSE}
-  , BaseUnix, pthreads {$IFNDEF DARWIN}, Linux{$ENDIF}
+   ,pthreads {$IFNDEF DARWIN}, Linux{$ELSE},Unix{$ENDIF}
   {$ENDIF}
   ;
 
@@ -311,8 +311,10 @@ begin
     ThID := 0;
     Job.FThreadHandle := BeginThread(nil, 0, @JobProc, Job, 0, ThID);
     {$ELSE}
+    //ThID := nil;
     if pthread_create(ThID, nil, @JobProc, Job) <> 0 then
       raise Exception.Create('Unable to create thread');
+    Job.FThreadHandle:= ThID^;
     {$ENDIF}
   finally
     Unlock;
@@ -516,6 +518,10 @@ procedure TScheduler.Execute;
 {$IFDEF UNIX}
 var
   timespec: ttimespec;
+  {$IFDEF DARWIN}
+  timeval: ttimeval;
+  usec: Int64;
+  {$ENDIF}
 {$ENDIF}
 begin
   repeat
@@ -527,6 +533,18 @@ begin
       Continue;
     {$ELSE}
     pthread_mutex_lock(FMutex);
+    {$IFDEF DARWIN}
+    fpgettimeofday(@timeval, nil);
+    usec := timeval.tv_sec * 1000000 + timeval.tv_usec + 50 * 1000;
+    timespec.tv_sec := usec div 1000000;
+    timespec.tv_nsec := (usec mod 1000000) * 1000;
+
+    if timespec.tv_nsec >= 1000000000 then
+    begin
+      timespec.tv_sec := timespec.tv_sec + 1;
+      timespec.tv_nsec := timespec.tv_nsec - 1000000000;
+    end;
+    {$ELSE}
     clock_gettime(CLOCK_REALTIME, @timespec);
     timespec.tv_nsec := timespec.tv_nsec + 50 * 1000000;
     if timespec.tv_nsec >= 1000000000 then
@@ -534,6 +552,7 @@ begin
       timespec.tv_sec := timespec.tv_sec + 1;
       timespec.tv_nsec := timespec.tv_nsec - 1000000000;
     end;
+    {$ENDIF}
 
     pthread_cond_timedwait(FCondition, FMutex, @timespec);
     pthread_mutex_unlock(FMutex);
