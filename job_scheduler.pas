@@ -41,7 +41,7 @@ uses
   {$IFDEF WINDOWS}
   , Windows
   {$ELSE}
-   ,pthreads {$IFNDEF DARWIN}, Linux{$ELSE},Unix{$ENDIF}
+   ,BaseUnix ,pthreads {$IFNDEF DARWIN}, Linux{$ELSE},Unix{$ENDIF}
   {$ENDIF}
   ;
 
